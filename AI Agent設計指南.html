@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動式AI Agent框架設計指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: "Warm Neutral" with teal and slate accents -->
+    <!-- Application Structure Plan: The SPA uses a fixed sidebar navigation on larger screens (which collapses to a hamburger menu on mobile) and a main content area. This structure was chosen over a linear document to allow users, primarily developers, to non-linearly access specific information they need, such as comparing frameworks or understanding a particular reasoning model, thus making the guide an explorable resource rather than a static document. Each navigation item reveals a corresponding content section, turning the report into a user-driven, interactive experience. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Core principles (Agent loop, types). -> Goal: Inform. -> Viz/Presentation: Interactive cards with icons (HTML/Unicode) and togglable content sections. -> Interaction: Click to reveal details. -> Justification: Breaks down complex theory into digestible, user-controlled chunks. -> Method: HTML/CSS/JS.
+        - Report Info: Comparison of reasoning models (CoT, ReAct, ToT). -> Goal: Compare/Organize. -> Viz/Presentation: Visual flow diagrams built with styled HTML divs. -> Interaction: Buttons to switch between different model diagrams. -> Justification: Visually represents abstract processes, making the differences in flow (linear vs. cyclic vs. tree) immediately apparent and easier to grasp than text alone. -> Method: HTML/CSS/JS.
+        - Report Info: Comparison of development frameworks (Table 5.5.1). -> Goal: Compare. -> Viz/Presentation: A dynamic radar chart and a detailed HTML table. -> Interaction: Hovering on the chart reveals tooltips with specific scores. -> Justification: The radar chart provides a powerful, at-a-glance comparison of multiple frameworks across multiple criteria, highlighting strengths and weaknesses far more effectively than a simple table. -> Library/Method: Chart.js, HTML/JS.
+        - Report Info: Prompting guide for agent design (Part 7). -> Goal: Organize/Instruct. -> Viz/Presentation: An accordion-style stepper. -> Interaction: Clicking on a stage header expands to show the detailed prompt examples for that stage. -> Justification: This organizes the complex, multi-stage process into a clear, sequential workflow, preventing information overload and guiding the user step-by-step. -> Method: HTML/JS.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8f7f4; color: #4a4a4a; }
+        .active-nav { background-color: #00796b; color: #ffffff; }
+        .nav-item { transition: background-color 0.3s, color 0.3s; }
+        .content-section { display: none; }
+        .content-section.active { display: block; }
+        .card { background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05); transition: transform 0.3s, box-shadow 0.3s; padding: 1.5rem; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+        .btn { display: inline-block; padding: 0.75rem 1.5rem; border-radius: 0.5rem; background-color: #009688; color: #ffffff; font-weight: 500; transition: background-color 0.3s; text-align: center; }
+        .btn:hover { background-color: #00796b; }
+        .btn-secondary { background-color: #e0e0e0; color: #4a4a4a; }
+        .btn-secondary:hover { background-color: #bdbdbd; }
+        .accordion-header { cursor: pointer; padding: 1rem; background-color: #e8e6e1; border-radius: 0.5rem; margin-top: 0.5rem; transition: background-color 0.3s; }
+        .accordion-header.active { background-color: #d7d4ce; }
+        .accordion-content { display: none; padding: 1rem; border: 1px solid #e0e0e0; border-top: none; border-radius: 0 0 0.5rem 0.5rem; }
+        .chart-container { position: relative; width: 100%; max-width: 600px; margin-left: auto; margin-right: auto; height: 350px; max-height: 400px; }
+        @media (min-width: 768px) { .chart-container { height: 400px; max-height: 500px;} }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="flex h-screen bg-[#f8f7f4]">
+        <!-- Sidebar Navigation (for large screens) -->
+        <aside id="sidebar" class="hidden lg:flex flex-col w-64 bg-[#ffffff] shadow-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h1 class="text-xl font-bold text-[#00796b]">AI Agent 設計指南</h1>
+            </div>
+            <nav class="flex-1 space-y-2 p-4">
+                <a href="#home" class="nav-item flex items-center px-4 py-2 rounded-lg active-nav">
+                    <span class="mr-3">🏠</span> 歡迎
+                </a>
+                <a href="#core" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">🏗️</span> 核心架構
+                </a>
+                <a href="#reasoning" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">🧠</span> 推理模型
+                </a>
+                <a href="#tools" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">🛠️</span> 工具與行動
+                </a>
+                <a href="#frameworks" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">📊</span> 開發框架
+                </a>
+                <a href="#robust" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">🛡️</span> 穩健工程
+                </a>
+                <a href="#workshop" class="nav-item flex items-center px-4 py-2 rounded-lg">
+                    <span class="mr-3">👨‍🏫</span> 提示詞工作坊
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Mobile Header -->
+        <header class="lg:hidden fixed top-0 left-0 right-0 bg-[#ffffff] shadow-md z-20">
+            <div class="flex justify-between items-center p-4">
+                <h1 class="text-xl font-bold text-[#00796b]">AI Agent 設計指南</h1>
+                <button id="menu-button" class="text-3xl text-[#00796b]">&#9776;</button>
+            </div>
+        </header>
+
+        <!-- Mobile Navigation Menu -->
+        <div id="mobile-menu" class="hidden fixed inset-0 bg-black bg-opacity-50 z-30">
+            <div class="w-64 bg-[#ffffff] h-full shadow-lg p-4">
+                <nav class="flex flex-col space-y-2">
+                    <a href="#home" class="nav-item flex items-center px-4 py-2 rounded-lg active-nav"><span class="mr-3">🏠</span> 歡迎</a>
+                    <a href="#core" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">🏗️</span> 核心架構</a>
+                    <a href="#reasoning" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">🧠</span> 推理模型</a>
+                    <a href="#tools" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">🛠️</span> 工具與行動</a>
+                    <a href="#frameworks" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">📊</span> 開發框架</a>
+                    <a href="#robust" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">🛡️</span> 穩健工程</a>
+                    <a href="#workshop" class="nav-item flex items-center px-4 py-2 rounded-lg"><span class="mr-3">👨‍🏫</span> 提示詞工作坊</a>
+                </nav>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 p-6 lg:p-10 overflow-y-auto mt-16 lg:mt-0">
+
+            <!-- Welcome Section -->
+            <section id="home" class="content-section active">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">歡迎來到互動式AI Agent設計指南</h2>
+                <p class="text-lg text-gray-600 mb-6">
+                    本指南旨在將複雜的AI Agent框架設計原理，轉化為一個清晰、可互動的學習體驗。AI Agent不僅僅是聊天機器人，它是一個能被授權、具備自主決策與行動能力的完整系統。打造一個成功的Agent，本質上是一項系統整合的挑戰。
+                </p>
+                <div class="card">
+                    <h3 class="text-xl font-bold text-[#00796b] mb-3">如何使用本指南</h3>
+                    <p class="text-gray-700">
+                        請使用左側的導覽列（在行動裝置上請點擊選單按鈕）來探索Agent設計的各個面向。您可以從「核心架構」開始，了解基礎原理；深入「推理模型」和「開發框架」進行技術比較；或直接跳到「提示詞工作坊」，學習如何與AI協作設計您自己的Agent。每個部分都經過精心設計，以視覺化和互動的方式呈現關鍵資訊。
+                    </p>
+                </div>
+            </section>
+
+            <!-- Core Architecture Section -->
+            <section id="core" class="content-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">核心架構：Agent的基礎</h2>
+                <p class="text-lg text-gray-600 mb-6">一個自主Agent的運作，遵循一個由四個關鍵組件構成的循環。同時，其記憶系統是實現情境感知和持續學習的基礎。本節將剖析這些核心元素。</p>
+                
+                <h3 class="text-2xl font-semibold text-gray-700 mt-8 mb-4">代理循環 (Agent Loop)</h3>
+                <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="card text-center">
+                        <div class="text-4xl mb-3">👁️</div>
+                        <h4 class="text-lg font-bold">感知 (Perception)</h4>
+                        <p class="text-sm text-gray-600">從使用者輸入、API、感測器等來源收集資訊，理解環境狀態。</p>
+                    </div>
+                    <div class="card text-center">
+                        <div class="text-4xl mb-3">🤔</div>
+                        <h4 class="text-lg font-bold">規劃 (Planning)</h4>
+                        <p class="text-sm text-gray-600">將目標分解為可執行的步驟，並選擇最佳策略。</p>
+                    </div>
+                    <div class="card text-center">
+                        <div class="text-4xl mb-3">⚡</div>
+                        <h4 class="text-lg font-bold">行動 (Action)</h4>
+                        <p class="text-sm text-gray-600">透過呼叫API、執行程式碼等方式影響環境，執行計畫。</p>
+                    </div>
+                    <div class="card text-center">
+                        <div class="text-4xl mb-3">🧠</div>
+                        <h4 class="text-lg font-bold">記憶/學習</h4>
+                        <p class="text-sm text-gray-600">觀察行動結果，利用反饋來調整和優化未來行為。</p>
+                    </div>
+                </div>
+
+                <h3 class="text-2xl font-semibold text-gray-700 mt-10 mb-4">記憶系統：短期與長期</h3>
+                <div class="grid md:grid-cols-2 gap-6">
+                     <div class="card">
+                        <h4 class="text-lg font-bold">短期記憶 (STM)</h4>
+                        <p class="text-gray-600 mt-2">如同電腦的RAM，負責儲存當前互動的即時情境，通常透過LLM的「情境窗口」處理，是易失的。</p>
+                    </div>
+                    <div class="card">
+                        <h4 class="text-lg font-bold">長期記憶 (LTM)</h4>
+                        <p class="text-gray-600 mt-2">如同電腦的硬碟，是永久知識庫，允許跨會話儲存和回憶資訊。通常透過<span class="font-semibold text-[#00796b]">向量資料庫</span>和<span class="font-semibold text-[#00796b]">檢索增強生成(RAG)</span>技術實現。</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reasoning Models Section -->
+            <section id="reasoning" class="content-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">推理模型：Agent的思考方式</h2>
+                <p class="text-lg text-gray-600 mb-6">推理模型決定了Agent如何將宏大目標分解為具體行動計畫。不同的模型在複雜性、互動性和穩健性上各有優劣。點擊下方按鈕，可以視覺化地比較三種主流的推理框架。</p>
+
+                <div class="text-center mb-6 space-x-2">
+                    <button class="reasoning-btn btn" data-target="cot">思維鏈 (CoT)</button>
+                    <button class="reasoning-btn btn btn-secondary" data-target="react">ReAct</button>
+                    <button class="reasoning-btn btn btn-secondary" data-target="tot">思維樹 (ToT)</button>
+                </div>
+
+                <div id="reasoning-display" class="card">
+                    <!-- CoT Display -->
+                    <div id="cot-content" class="reasoning-content">
+                        <h3 class="text-xl font-bold text-[#00796b]">思維鏈 (Chain-of-Thought)</h3>
+                        <p class="mt-2 mb-4">一種線性的、逐步的內心獨白式推理。模型將問題分解為一系列中間步驟來導出最終答案，但無法與外部世界互動或中途修正。</p>
+                        <div class="flex items-center justify-center space-x-2 p-4 bg-gray-50 rounded-lg">
+                            <div class="p-3 bg-blue-100 rounded-lg">問題</div>
+                            <div class="text-2xl text-blue-400">&rarr;</div>
+                            <div class="p-3 bg-blue-100 rounded-lg">思考步驟1</div>
+                            <div class="text-2xl text-blue-400">&rarr;</div>
+                            <div class="p-3 bg-blue-100 rounded-lg">思考步驟2</div>
+                             <div class="text-2xl text-blue-400">&rarr;</div>
+                            <div class="p-3 bg-green-100 rounded-lg font-bold">答案</div>
+                        </div>
+                    </div>
+                    <!-- ReAct Display -->
+                    <div id="react-content" class="reasoning-content hidden">
+                        <h3 class="text-xl font-bold text-[#00796b]">ReAct (Reason + Act)</h3>
+                        <p class="mt-2 mb-4">將推理與行動交織在一起，形成一個動態的「思考 &rarr; 行動 &rarr; 觀察」循環。這使Agent能利用外部工具獲取即時資訊，並根據觀察結果調整計畫。</p>
+                        <div class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
+                             <div class="flex items-center space-x-2">
+                                <div class="p-3 bg-purple-100 rounded-lg">思考</div>
+                                <div class="text-2xl text-purple-400">&rarr;</div>
+                                <div class="p-3 bg-yellow-100 rounded-lg">行動(工具)</div>
+                                <div class="text-2xl text-yellow-400">&rarr;</div>
+                                <div class="p-3 bg-teal-100 rounded-lg">觀察</div>
+                            </div>
+                            <div class="text-4xl text-purple-400 transform -rotate-90 ml-32 mt-1">⤴</div>
+                            <p class="text-sm text-gray-500 -mt-2 ml-40">回饋至下一次思考</p>
+                        </div>
+                    </div>
+                    <!-- ToT Display -->
+                    <div id="tot-content" class="reasoning-content hidden">
+                        <h3 class="text-xl font-bold text-[#00796b]">思維樹 (Tree of Thoughts)</h3>
+                        <p class="mt-2 mb-4">允許Agent同時探索多條不同的解決方案路徑，形成一棵樹狀結構。透過提議和評估機制，Agent可以系統性地探索，並在必要時回溯，適合解決複雜問題。</p>
+                        <div class="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg">
+                            <div class="p-3 bg-indigo-100 rounded-lg">初始問題</div>
+                            <div class="text-2xl text-indigo-400">↓</div>
+                            <div class="flex space-x-8">
+                                <div class="flex flex-col items-center">
+                                    <div class="p-3 bg-indigo-100 rounded-lg">想法A</div>
+                                    <div class="text-xl text-indigo-400">↘</div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="p-3 bg-indigo-200 rounded-lg font-bold">想法B (更優)</div>
+                                    <div class="text-xl text-indigo-400">↓</div>
+                                    <div class="p-3 bg-green-100 rounded-lg">最終解</div>
+                                </div>
+                                <div class="flex flex-col items-center">
+                                    <div class="p-3 bg-red-100 rounded-lg line-through">想法C (死路)</div>
+                                    <div class="text-xl text-red-400">↙</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Tools & Action Section -->
+            <section id="tools" class="content-section">
+                 <h2 class="text-3xl font-bold text-gray-800 mb-4">工具與行動：Agent的觸手</h2>
+                <p class="text-lg text-gray-600 mb-6">工具是Agent與外部世界互動的橋樑。一個設計良好的工具定義，對於Agent能否可靠地執行任務至關重要。這不僅是技術問題，更是「能力策展」的藝術。</p>
+                <div class="card">
+                    <h3 class="text-xl font-bold text-[#00796b] mb-3">工具定義的最佳實踐</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><span class="font-semibold">清晰至上：</span>工具的名稱和描述必須極度清晰、無歧義。LLM完全依賴文本來理解其功能。</li>
+                        <li><span class="font-semibold">防呆設計：</span>透過設計來預防常見錯誤。例如，總是要求使用絕對路徑而非相對路徑。</li>
+                        <li><span class="font-semibold">提供範例：</span>在描述中包含具體的使用範例，幫助LLM理解邊界條件。</li>
+                        <li><span class="font-semibold">測試與迭代：</span>觀察Agent如何使用（或誤用）工具，並根據結果反覆迭代優化工具的定義。</li>
+                    </ul>
+                    <div class="mt-6 p-4 bg-gray-800 text-white rounded-lg">
+                        <pre><code class="language-python">
+# 一個清晰的工具定義範例
+def search_knowledge_base(query: str) -> str:
+    """
+    在企業知識庫中搜尋與使用者查詢相關的文章。
+    僅在需要查找產品規格、解決方案或政策時使用。
+    Args:
+        query (str): 要在知識庫中搜尋的關鍵詞或問題。
+    Returns:
+        str: 搜尋結果的摘要，若無結果則返回'未找到相關資訊'。
+    """
+    # ... 實作程式碼 ...
+    pass
+                        </code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Dev Frameworks Section -->
+            <section id="frameworks" class="content-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">開發框架比較</h2>
+                <p class="text-lg text-gray-600 mb-6">選擇合適的開發框架是將AI Agent從概念變為現實的關鍵一步。下方的雷達圖和表格，從多個維度比較了幾個主流的開源框架，幫助您根據專案需求做出明智的技術選型。</p>
+                
+                <div class="card mb-8">
+                    <div class="chart-container">
+                        <canvas id="frameworks-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card overflow-x-auto">
+                    <table class="w-full text-sm text-left text-gray-600">
+                        <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                            <tr>
+                                <th scope="col" class="px-6 py-3">特性</th>
+                                <th scope="col" class="px-6 py-3">LangGraph</th>
+                                <th scope="col" class="px-6 py-3">LlamaIndex</th>
+                                <th scope="col" class="px-6 py-3">AutoGen</th>
+                                <th scope="col" class="px-6 py-3">CrewAI</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="bg-white border-b">
+                                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">核心哲學</th>
+                                <td class="px-6 py-4">有狀態的圖計算</td>
+                                <td class="px-6 py-4">以數據為中心的RAG</td>
+                                <td class="px-6 py-4">多Agent對話</td>
+                                <td class="px-6 py-4">基於角色的團隊協作</td>
+                            </tr>
+                            <tr class="bg-gray-50 border-b">
+                                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">狀態管理</th>
+                                <td class="px-6 py-4 font-bold text-green-600">卓越</td>
+                                <td class="px-6 py-4">基礎</td>
+                                <td class="px-6 py-4 text-yellow-600">良好</td>
+                                <td class="px-6 py-4">基礎</td>
+                            </tr>
+                             <tr class="bg-white border-b">
+                                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">多Agent支援</th>
+                                <td class="px-6 py-4 font-bold text-green-600">卓越</td>
+                                <td class="px-6 py-4 text-yellow-600">良好</td>
+                                <td class="px-6 py-4 font-bold text-green-600">卓越</td>
+                                <td class="px-6 py-4 font-bold text-green-600">卓越</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">上手難度</th>
+                                <td class="px-6 py-4 font-bold text-red-600">高</td>
+                                <td class="px-6 py-4 text-yellow-600">中</td>
+                                <td class="px-6 py-4 text-yellow-600">中</td>
+                                <td class="px-6 py-4 font-bold text-green-600">低</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </section>
+
+            <!-- Robust Engineering Section -->
+            <section id="robust" class="content-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">穩健工程：應對現實挑戰</h2>
+                 <p class="text-lg text-gray-600 mb-6">理論上的完美設計在現實中必然會面臨挑戰。一個真正強大的Agent，是那些不將「失敗」視為異常，而是將其視為可供學習的「數據」的系統。這需要我們主動設計穩健、容錯的工作流程。</p>
+                 <div class="grid md:grid-cols-2 gap-6">
+                    <div class="card">
+                         <h3 class="text-xl font-bold text-[#00796b] mb-3">關鍵策略</h3>
+                         <ul class="list-disc list-inside space-y-2 text-gray-700">
+                             <li>數據品質為先</li>
+                             <li>輸入/輸出驗證</li>
+                             <li>多層次錯誤處理與備用機制</li>
+                             <li>對於關鍵任務採用冗餘設計</li>
+                         </ul>
+                    </div>
+                    <div class="card">
+                         <h3 class="text-xl font-bold text-[#00796b] mb-3">反思型Agent架構</h3>
+                         <p class="text-gray-700 mb-3">透過「執行-反思」循環，Agent能實現自我修正。這是從防禦性編程到主動性學習的根本性飛躍。</p>
+                         <div class="p-4 bg-gray-50 rounded-lg text-center">
+                            <div class="p-3 bg-blue-100 rounded-lg inline-block">執行者 (Actor)</div>
+                            <div class="text-2xl text-gray-400 mx-2 inline-block">&harr;</div>
+                             <div class="p-3 bg-purple-100 rounded-lg inline-block">評論家 (Critic)</div>
+                             <p class="text-sm mt-2">評論家審查執行者的輸出，並將反饋傳回以進行改進。</p>
+                         </div>
+                    </div>
+                 </div>
+            </section>
+            
+            <!-- Prompting Workshop Section -->
+            <section id="workshop" class="content-section">
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">提示詞工作坊：與AI協作設計</h2>
+                <p class="text-lg text-gray-600 mb-6">本節將所有概念融會貫通，提供一個分階段、結構化的對話式方法，引導您使用提示詞讓AI扮演架構師的角色，與您共同完成Agent框架設計。點擊下方各階段來查看範例提示。</p>
+                <div id="accordion-container">
+                    <!-- Stage 1 -->
+                    <div class="accordion-header" data-target="accordion-1">
+                        <h3 class="text-lg font-semibold">階段一：藍圖 - 定義高層次架構</h3>
+                    </div>
+                    <div id="accordion-1" class="accordion-content">
+                        <p class="font-semibold mb-2">目標：確定Agent的最終目的、能力範圍和整體的架構風格。</p>
+                        <div class="p-4 bg-gray-800 text-white rounded-lg">
+                            <pre><code>您是一位頂尖的AI Agent架構師。我是一位資深開發者，任務是為「自動化解決客戶支援工單」建構一個自主Agent。
+
+基於此任務，請：
+1. 建議最適合的Agent類型（如目標導向型）及理由。
+2. 推薦一種推理模式（如ReAct）及理由。
+3. 概述核心組件在此任務中的職責。
+4. 建議一個主要開發框架（如LangGraph）及理由。
+                            </code></pre>
+                        </div>
+                    </div>
+                    <!-- Stage 2 -->
+                    <div class="accordion-header" data-target="accordion-2">
+                        <h3 class="text-lg font-semibold">階段二：組件設計 - 精細化記憶與工具</h3>
+                    </div>
+                    <div id="accordion-2" class="accordion-content">
+                        <p class="font-semibold mb-2">目標：具體化每個架構組件的細節。</p>
+                        <div class="p-4 bg-gray-800 text-white rounded-lg">
+                            <pre><code>接續我們為客戶支援Agent的設計，現在讓我們來設計「行動」組件及其「工具」。
+
+此Agent需要與CRM、知識庫和Zendesk互動。請：
+1. 列出Agent所需的具體工具。
+2. 為每個工具定義清晰的名稱、描述和參數。
+3. 為工具定義提供最佳實踐建議，確保LLM能可靠使用。
+                            </code></pre>
+                        </div>
+                    </div>
+                     <!-- Stage 3 -->
+                    <div class="accordion-header" data-target="accordion-3">
+                        <h3 class="text-lg font-semibold">階段三：實作 - 生成程式碼骨架</h3>
+                    </div>
+                    <div id="accordion-3" class="accordion-content">
+                        <p class="font-semibold mb-2">目標：將設計藍圖轉化為功能性的樣板程式碼。</p>
+                        <div class="p-4 bg-gray-800 text-white rounded-lg">
+                            <pre><code>基於我們已定義的完整設計，請為此LangGraph圖生成Python程式碼。
+
+程式碼應包含：
+1. 圖的狀態（state）定義。
+2. Agent節點和工具執行節點的定義。
+3. 實現ReAct循環的條件邊（conditional edges）。
+4. 為我們的自訂工具提供佔位函數，並加上詳細註解。
+                            </code></pre>
+                        </div>
+                    </div>
+                     <!-- Stage 4 -->
+                    <div class="accordion-header" data-target="accordion-4">
+                        <h3 class="text-lg font-semibold">階段四：測試與優化 - 生成測試案例</h3>
+                    </div>
+                    <div id="accordion-4" class="accordion-content">
+                        <p class="font-semibold mb-2">目標：確保Agent的穩健性並優化其行為。</p>
+                        <div class="p-4 bg-gray-800 text-white rounded-lg">
+                            <pre><code>您現在是一位QA工程師。請為我們的客戶支援Agent生成一個包含10個測試案例的清單。
+
+清單應包括：
+- 簡單直接的請求。
+- 模棱兩可的請求。
+- 需要多次使用工具的請求。
+- 邊界情況和潛在的失敗場景。
+                            </code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const navLinks = document.querySelectorAll('.nav-item');
+            const contentSections = document.querySelectorAll('.content-section');
+            const menuButton = document.getElementById('menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+
+            function setActiveSection(hash) {
+                const targetHash = hash || '#home';
+                
+                navLinks.forEach(link => {
+                    link.classList.toggle('active-nav', link.getAttribute('href') === targetHash);
+                });
+
+                contentSections.forEach(section => {
+                    section.classList.toggle('active', '#' + section.id === targetHash);
+                });
+
+                if (mobileMenu.classList.contains('lg:hidden')) {
+                     mobileMenu.classList.add('hidden');
+                }
+            }
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetHash = this.getAttribute('href');
+                    setActiveSection(targetHash);
+                    history.pushState(null, null, targetHash);
+                });
+            });
+
+            menuButton.addEventListener('click', () => {
+                mobileMenu.classList.toggle('hidden');
+            });
+
+            mobileMenu.addEventListener('click', (e) => {
+                if (e.target === mobileMenu) {
+                    mobileMenu.classList.add('hidden');
+                }
+            });
+            
+            setActiveSection(window.location.hash);
+
+            // Reasoning Model interactivity
+            const reasoningBtns = document.querySelectorAll('.reasoning-btn');
+            const reasoningContents = document.querySelectorAll('.reasoning-content');
+            reasoningBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const target = btn.dataset.target;
+                    
+                    reasoningBtns.forEach(b => {
+                        b.classList.add('btn-secondary');
+                        b.classList.remove('btn');
+                    });
+                    btn.classList.add('btn');
+                    btn.classList.remove('btn-secondary');
+
+                    reasoningContents.forEach(content => {
+                        content.classList.toggle('hidden', content.id !== `${target}-content`);
+                    });
+                });
+            });
+
+            // Accordion interactivity
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            accordionHeaders.forEach(header => {
+                header.addEventListener('click', () => {
+                    const targetId = header.dataset.target;
+                    const targetContent = document.getElementById(targetId);
+                    
+                    const isActive = header.classList.contains('active');
+                    
+                    accordionHeaders.forEach(h => h.classList.remove('active'));
+                    document.querySelectorAll('.accordion-content').forEach(c => c.style.display = 'none');
+                    
+                    if (!isActive) {
+                        header.classList.add('active');
+                        targetContent.style.display = 'block';
+                    }
+                });
+            });
+            
+            // Frameworks Chart
+            const ctx = document.getElementById('frameworks-chart');
+            if(ctx) {
+                const data = {
+                    labels: ['狀態管理', '多Agent支援', '上手難度(越高越難)', 'RAG中心', '協作模式'],
+                    datasets: [
+                        {
+                            label: 'LangGraph',
+                            data: [5, 5, 1, 3, 4],
+                            fill: true,
+                            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            pointBackgroundColor: 'rgb(255, 99, 132)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(255, 99, 132)'
+                        },
+                        {
+                            label: 'LlamaIndex',
+                            data: [2, 4, 3, 5, 2],
+                            fill: true,
+                            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                            borderColor: 'rgb(54, 162, 235)',
+                            pointBackgroundColor: 'rgb(54, 162, 235)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(54, 162, 235)'
+                        },
+                        {
+                            label: 'AutoGen',
+                            data: [4, 5, 3, 2, 5],
+                            fill: true,
+                            backgroundColor: 'rgba(255, 205, 86, 0.2)',
+                            borderColor: 'rgb(255, 205, 86)',
+                            pointBackgroundColor: 'rgb(255, 205, 86)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(255, 205, 86)'
+                        },
+                        {
+                            label: 'CrewAI',
+                            data: [2, 5, 5, 2, 5],
+                            fill: true,
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            borderColor: 'rgb(75, 192, 192)',
+                            pointBackgroundColor: 'rgb(75, 192, 192)',
+                            pointBorderColor: '#fff',
+                            pointHoverBackgroundColor: '#fff',
+                            pointHoverBorderColor: 'rgb(75, 192, 192)'
+                        }
+                    ]
+                };
+
+                new Chart(ctx, {
+                    type: 'radar',
+                    data: data,
+                    options: {
+                        maintainAspectRatio: false,
+                        responsive: true,
+                        scales: {
+                            r: {
+                                angleLines: {
+                                    display: false
+                                },
+                                suggestedMin: 0,
+                                suggestedMax: 5,
+                                pointLabels: {
+                                    font: {
+                                        size: 14,
+                                        family: "'Noto Sans TC', sans-serif"
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    font: {
+                                        size: 14,
+                                        family: "'Noto Sans TC', sans-serif"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
