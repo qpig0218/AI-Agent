@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude + MCP Agent 框架設計工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .main-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .builder-panel, .preview-panel {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .panel-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #4a5568;
+            border-bottom: 3px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .framework-visual {
+            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px solid #dee2e6;
+        }
+
+        .visual-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .flow-step {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .flow-step:hover {
+            transform: translateY(-2px);
+        }
+
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .section-header {
+            background: #f7fafc;
+            padding: 15px;
+            border-bottom: 1px solid #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.3s ease;
+        }
+
+        .section-header:hover {
+            background: #edf2f7;
+        }
+
+        .section-header h3 {
+            color: #2d3748;
+            font-size: 1.1rem;
+        }
+
+        .section-content {
+            padding: 20px;
+            display: none;
+        }
+
+        .section.active .section-content {
+            display: block;
+        }
+
+        .section.active .section-header {
+            background: #667eea;
+            color: white;
+        }
+
+        .option-group {
+            margin-bottom: 15px;
+        }
+
+        .option-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+
+        .checkbox-group, .radio-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .checkbox-item, .radio-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .checkbox-item:hover, .radio-item:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+        }
+
+        .checkbox-item input, .radio-item input {
+            margin-right: 8px;
+        }
+
+        .text-input, .textarea-input, .select-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .text-input:focus, .textarea-input:focus, .select-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .textarea-input {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .generate-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .prompt-output {
+            background: #1a202c;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+            line-height: 1.6;
+        }
+
+        .copy-btn {
+            background: #38a169;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.3s ease;
+        }
+
+        .copy-btn:hover {
+            background: #2f855a;
+        }
+
+        .tips {
+            background: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .tips h4 {
+            color: #2c5282;
+            margin-bottom: 8px;
+        }
+
+        .tips ul {
+            color: #2d3748;
+            padding-left: 20px;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .visual-flow {
+                flex-direction: column;
+            }
+            
+            .flow-arrow {
+                transform: rotate(90deg);
+            }
+        }
+
+        .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .section.active .toggle-icon {
+            transform: rotate(180deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Claude + MCP Agent 框架設計工具</h1>
+            <p>視覺化設計你的AI Agent，生成專業的Prompt策略</p>
+        </div>
+
+        <!-- 框架視覺化 -->
+        <div class="framework-visual">
+            <h3 style="text-align: center; margin-bottom: 20px; color: #4a5568;">Claude-based AI Agent 架構流程</h3>
+            <div class="visual-flow">
+                <div class="flow-step">
+                    <div style="font-weight: bold;">任務分析</div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">目標理解<br>工具需求</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div style="font-weight: bold;">規劃執行</div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">步驟安排<br>工具選擇</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div style="font-weight: bold;">MCP調用</div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">工具協調<br>數據收集</div>
+                </div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step">
+                    <div style="font-weight: bold;">結果整合</div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">信息合成<br>最終輸出</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-layout">
+            <!-- 建構面板 -->
+            <div class="builder-panel">
+                <h2 class="panel-title">🛠️ Agent 配置建構器</h2>
+                
+                <!-- Agent 基本設定 -->
+                <div class="section active">
+                    <div class="section-header">
+                        <h3>🎯 Agent 基本設定</h3>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content">
+                        <div class="option-group">
+                            <label>Agent 名稱</label>
+                            <input type="text" class="text-input" id="agentName" placeholder="例如：研究助手、商務助理、數據分析師">
+                        </div>
+                        <div class="option-group">
+                            <label>Agent 類型</label>
+                            <div class="radio-group">
+                                <div class="radio-item">
+                                    <input type="radio" name="agentType" value="research" id="research">
+                                    <label for="research">🔍 研究型Agent</label>
+                                </div>
+                                <div class="radio-item">
+                                    <input type="radio" name="agentType" value="business" id="business">
+                                    <label for="business">💼 業務型Agent</label>
+                                </div>
+                                <div class="radio-item">
+                                    <input type="radio" name="agentType" value="analysis" id="analysis">
+                                    <label for="analysis">📊 分析型Agent</label>
+                                </div>
+                                <div class="radio-item">
+                                    <input type="radio" name="agentType" value="creative" id="creative">
+                                    <label for="creative">🎨 創意型Agent</label>
+                                </div>
+                                <div class="radio-item">
+                                    <input type="radio" name="agentType" value="custom" id="custom">
+                                    <label for="custom">⚙️ 自定義Agent</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <label>主要職責</label>
+                            <textarea class="textarea-input" id="agentRole" placeholder="描述這個Agent的主要職責和專長領域..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MCP工具選擇 -->
+                <div class="section">
+                    <div class="section-header">
+                        <h3>🔧 MCP 工具配置</h3>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content">
+                        <div class="option-group">
+                            <label>可用的MCP工具 (多選)</label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="webSearch" value="web_search">
+                                    <label for="webSearch">🌐 網路搜索 (web_search)</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="driveSearch" value="google_drive_search">
+                                    <label for="driveSearch">📁 文件搜索 (google_drive)</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="gmail" value="gmail_tools">
+                                    <label for="gmail">📧 郵件處理 (gmail)</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="calendar" value="calendar_tools">
+                                    <label for="calendar">📅 日程管理 (calendar)</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="analysis" value="analysis_tool">
+                                    <label for="analysis">📊 數據分析 (analysis)</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="customTool" value="custom">
+                                    <label for="customTool">⚙️ 自定義工具</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <label>自定義工具 (如有)</label>
+                            <textarea class="textarea-input" id="customTools" placeholder="列出其他可用的MCP工具，每行一個..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 執行策略 -->
+                <div class="section">
+                    <div class="section-header">
+                        <h3>🎯 執行策略設定</h3>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content">
+                        <div class="option-group">
+                            <label>執行模式</label>
+                            <select class="select-input" id="executionMode">
+                                <option value="sequential">順序執行 - 按步驟依序執行</option>
+                                <option value="parallel">並行執行 - 同時調用多工具</option>
+                                <option value="adaptive">自適應 - 根據結果動態調整</option>
+                                <option value="iterative">迭代深化 - 逐步深入分析</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label>錯誤處理策略</label>
+                            <div class="checkbox-group">
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="retry" value="retry">
+                                    <label for="retry">🔄 自動重試</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="fallback" value="fallback">
+                                    <label for="fallback">🔀 備用方案</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="notify" value="notify">
+                                    <label for="notify">💬 用戶通知</label>
+                                </div>
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="graceful" value="graceful">
+                                    <label for="graceful">🛡️ 優雅降級</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="option-group">
+                            <label>輸出格式偏好</label>
+                            <select class="select-input" id="outputFormat">
+                                <option value="structured">結構化報告</option>
+                                <option value="conversational">對話式回應</option>
+                                <option value="bullet">條列式總結</option>
+                                <option value="detailed">詳細分析</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 自定義需求 -->
+                <div class="section">
+                    <div class="section-header">
+                        <h3>✨ 自定義需求</h3>
+                        <span class="toggle-icon">▼</span>
+                    </div>
+                    <div class="section-content">
+                        <div class="option-group">
+                            <label>特殊指令</label>
+                            <textarea class="textarea-input" id="specialInstructions" placeholder="添加任何特殊的行為指令或限制..."></textarea>
+                        </div>
+                        <div class="option-group">
+                            <label>目標任務範例</label>
+                            <textarea class="textarea-input" id="taskExamples" placeholder="提供一些這個Agent需要處理的典型任務範例..."></textarea>
+                        </div>
+                        <div class="option-group">
+                            <label>性格設定</label>
+                            <select class="select-input" id="personality">
+                                <option value="professional">專業正式</option>
+                                <option value="friendly">友善親切</option>
+                                <option value="analytical">分析理性</option>
+                                <option value="creative">創意活潑</option>
+                                <option value="concise">簡潔明瞭</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="generate-btn" onclick="generatePrompt()">🚀 生成 Agent Prompt</button>
+            </div>
+
+            <!-- 預覽面板 -->
+            <div class="preview-panel">
+                <h2 class="panel-title">📋 生成的 Prompt 預覽</h2>
+                <div id="promptPreview" class="prompt-output">
+點擊「生成 Agent Prompt」按鈕來查看你的自定義 AI Agent 提示詞...
+
+這裡將顯示：
+• 完整的系統提示詞
+• 工具使用指南  
+• 執行流程框架
+• 錯誤處理策略
+                </div>
+                <button class="copy-btn" onclick="copyPrompt()">📋 複製 Prompt</button>
+                
+                <div class="tips">
+                    <h4>💡 使用提示</h4>
+                    <ul>
+                        <li>複製生成的prompt直接在Claude中使用</li>
+                        <li>可以根據實際需求進一步調整prompt內容</li>
+                        <li>建議先用簡單任務測試Agent效果</li>
+                        <li>根據使用經驗持續優化prompt設計</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切換區段顯示
+        document.querySelectorAll('.section-header').forEach(header => {
+            header.addEventListener('click', () => {
+                const section = header.parentElement;
+                const isActive = section.classList.contains('active');
+                
+                // 關閉其他區段
+                document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+                
+                // 切換當前區段
+                if (!isActive) {
+                    section.classList.add('active');
+                }
+            });
+        });
+
+        // 生成Prompt功能
+        function generatePrompt() {
+            const agentName = document.getElementById('agentName').value || '智能助手';
+            const agentType = document.querySelector('input[name="agentType"]:checked')?.value || 'custom';
+            const agentRole = document.getElementById('agentRole').value || '協助用戶完成各種任務';
+            
+            // 收集選中的MCP工具
+            const selectedTools = [];
+            document.querySelectorAll('input[type="checkbox"]:checked').forEach(cb => {
+                if (cb.value !== 'custom') {
+                    selectedTools.push(cb.value);
+                }
+            });
+            
+            const customTools = document.getElementById('customTools').value;
+            const executionMode = document.getElementById('executionMode').value;
+            const outputFormat = document.getElementById('outputFormat').value;
+            const specialInstructions = document.getElementById('specialInstructions').value;
+            const taskExamples = document.getElementById('taskExamples').value;
+            const personality = document.getElementById('personality').value;
+
+            // 收集錯誤處理策略
+            const errorStrategies = [];
+            document.querySelectorAll('input[value="retry"]:checked, input[value="fallback"]:checked, input[value="notify"]:checked, input[value="graceful"]:checked').forEach(cb => {
+                errorStrategies.push(cb.value);
+            });
+
+            const prompt = generateAgentPrompt({
+                agentName,
+                agentType,
+                agentRole,
+                selectedTools,
+                customTools,
+                executionMode,
+                outputFormat,
+                specialInstructions,
+                taskExamples,
+                personality,
+                errorStrategies
+            });
+
+            document.getElementById('promptPreview').textContent = prompt;
+        }
+
+        function generateAgentPrompt(config) {
+            const typeTemplates = {
+                research: '你是一個專業的研究型Agent，擅長信息收集、分析和綜合。',
+                business: '你是一個高效的業務型Agent，專注於商務流程優化和任務執行。',
+                analysis: '你是一個專業的分析型Agent，專長於數據處理、分析和洞察挖掘。',
+                creative: '你是一個創意型Agent，能夠提供創新思維和創意解決方案。',
+                custom: '你是一個多功能的智能Agent，能夠適應各種任務需求。'
+            };
+
+            const personalityMap = {
+                professional: '保持專業、正式的溝通風格',
+                friendly: '採用友善、親切的溝通方式',
+                analytical: '注重邏輯性和分析性的表達',
+                creative: '發揮創意思維，提供創新視角',
+                concise: '簡潔明瞭，直接高效'
+            };
+
+            const executionModes = {
+                sequential: '按邏輯順序依次執行每個步驟',
+                parallel: '合理安排並行處理來提高效率',
+                adaptive: '根據執行結果動態調整策略',
+                iterative: '採用迭代方式逐步深化分析'
+            };
+
+            let toolsList = config.selectedTools.map(tool => {
+                const toolMap = {
+                    web_search: '🌐 web_search: 網路搜索獲取最新信息',
+                    google_drive_search: '📁 google_drive_search: 搜索和檢索文件',
+                    gmail_tools: '📧 gmail_tools: 郵件處理和管理',
+                    calendar_tools: '📅 calendar_tools: 日程安排和時間管理',
+                    analysis_tool: '📊 analysis_tool: 數據分析和處理'
+                };
+                return toolMap[tool] || tool;
+            }).join('\n- ');
+
+            if (config.customTools) {
+                toolsList += '\n- ' + config.customTools.split('\n').filter(t => t.trim()).join('\n- ');
+            }
+
+            return `# ${config.agentName} - AI Agent 系統提示詞
+
+${typeTemplates[config.agentType]}
+
+## 🎯 核心身份
+**角色**: ${config.agentName}
+**職責**: ${config.agentRole}
+**性格**: ${personalityMap[config.personality]}
+
+## 🔧 可用工具
+- ${toolsList}
+
+## 📋 執行框架
+
+### 階段1: 任務分析
+\`\`\`
+**目標理解**: [清晰重述任務目標]
+**工具需求**: [識別需要的MCP工具]
+**執行策略**: [選擇最適合的執行模式]
+**成功標準**: [定義完成的判斷標準]
+\`\`\`
+
+### 階段2: 執行規劃
+\`\`\`
+**主要步驟**: 
+1. [步驟1] - 使用工具: [tool_name]
+2. [步驟2] - 使用工具: [tool_name]  
+3. [步驟3] - 使用工具: [tool_name]
+
+**執行模式**: ${executionModes[config.executionMode]}
+**依賴關係**: [步驟間的邏輯依賴]
+\`\`\`
+
+### 階段3: 工具協調執行
+- 按計劃調用所需的MCP工具
+- 每次工具調用後簡要說明發現
+- 根據結果動態調整後續步驟
+- 保持執行過程的透明性
+
+### 階段4: 結果整合與輸出
+- 整合所有工具的輸出結果
+- 按照${config.outputFormat}格式提供回應
+- 確認目標達成並提供後續建議
+
+## ⚠️ 錯誤處理策略
+${config.errorStrategies.map(strategy => {
+    const strategyMap = {
+        retry: '🔄 **自動重試**: 工具調用失敗時進行重試',
+        fallback: '🔀 **備用方案**: 準備替代工具和方法',  
+        notify: '💬 **用戶通知**: 及時告知問題和限制',
+        graceful: '🛡️ **優雅降級**: 部分失敗時提供可用結果'
+    };
+    return strategyMap[strategy];
+}).join('\n')}
+
+## 📝 執行原則
+1. **透明性**: 每次工具調用都說明原因和預期
+2. **適應性**: 根據結果調整執行策略
+3. **完整性**: 確保任務得到全面處理
+4. **效率性**: 合理安排工具使用順序
+
+${config.specialInstructions ? `## ✨ 特殊指令\n${config.specialInstructions}` : ''}
+
+${config.taskExamples ? `## 📋 任務範例\n${config.taskExamples}` : ''}
+
+---
+
+**準備就緒！請提供具體任務，我將按照上述框架為您執行。**`;
+        }
+
+        function copyPrompt() {
+            const promptText = document.getElementById('promptPreview').textContent;
+            navigator.clipboard.writeText(promptText).then(() => {
+                const btn = document.querySelector('.copy-btn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ 已複製!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        }
+
+        // 初始化：展開第一個區段
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelector('.section').classList.add('active');
+        });
+    </script>
+</body>
+</html>
