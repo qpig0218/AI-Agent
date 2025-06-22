@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Claude + MCP Agent 框架設計工具</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,10 +15,10 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8f7f4;
             min-height: 100vh;
-            color: #333;
+            color: #4a4a4a;
         }
 
         .container {
@@ -24,21 +27,46 @@
             padding: 20px;
         }
 
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #00796b;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Noto Sans TC', sans-serif;
+            font-size: 14px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: background-color 0.3s;
+            z-index: 1000;
+        }
+
+        .back-button:hover {
+            background-color: #009688;
+        }
+
         .header {
             text-align: center;
             margin-bottom: 40px;
-            color: white;
+            margin-top: 60px;
+            color: #4a4a4a;
         }
 
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            color: #00796b;
         }
 
         .header p {
             font-size: 1.2rem;
-            opacity: 0.9;
+            opacity: 0.8;
         }
 
         .main-layout {
@@ -52,23 +80,23 @@
             background: white;
             border-radius: 15px;
             padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
         .panel-title {
             font-size: 1.5rem;
             margin-bottom: 20px;
             color: #4a5568;
-            border-bottom: 3px solid #667eea;
+            border-bottom: 3px solid #00796b;
             padding-bottom: 10px;
         }
 
         .framework-visual {
-            background: linear-gradient(45deg, #f8f9fa, #e9ecef);
-            border-radius: 10px;
+            background: white;
+            border-radius: 15px;
             padding: 20px;
             margin-bottom: 30px;
-            border: 2px solid #dee2e6;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
         .visual-flow {
@@ -80,7 +108,7 @@
         }
 
         .flow-step {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #009688, #00796b);
             color: white;
             padding: 15px;
             border-radius: 10px;
@@ -97,7 +125,7 @@
 
         .flow-arrow {
             font-size: 1.5rem;
-            color: #667eea;
+            color: #00796b;
             font-weight: bold;
         }
 
@@ -138,7 +166,7 @@
         }
 
         .section.active .section-header {
-            background: #667eea;
+            background: #00796b;
             color: white;
         }
 
@@ -170,7 +198,7 @@
         }
 
         .checkbox-item:hover, .radio-item:hover {
-            border-color: #667eea;
+            border-color: #00796b;
             background: #f7fafc;
         }
 
@@ -189,8 +217,8 @@
 
         .text-input:focus, .textarea-input:focus, .select-input:focus {
             outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #00796b;
+            box-shadow: 0 0 0 3px rgba(0, 121, 107, 0.1);
         }
 
         .textarea-input {
@@ -199,7 +227,7 @@
         }
 
         .generate-btn {
-            background: linear-gradient(45deg, #667eea, #764ba2);
+            background: linear-gradient(45deg, #009688, #00796b);
             color: white;
             border: none;
             padding: 15px 30px;
@@ -209,11 +237,12 @@
             width: 100%;
             margin-top: 20px;
             transition: transform 0.3s ease;
+            font-family: 'Noto Sans TC', sans-serif;
         }
 
         .generate-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 20px rgba(0, 121, 107, 0.3);
         }
 
         .prompt-output {
@@ -285,6 +314,9 @@
     </style>
 </head>
 <body>
+    <a href="index.html" class="back-button">
+        ← 返回至前頁
+    </a>
     <div class="container">
         <div class="header">
             <h1>🤖 Claude + MCP Agent 框架設計工具</h1>
